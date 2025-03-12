@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  ollama:
+    build: ./ollama
+    container_name: ollama-server
+    ports:
+      - "11434:11434"
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_MODELS=/root/.ollama
+
+  webui:
+    build: ./webui
+    container_name: ollama-webui
+    ports:
+      - "3000:3000"
+    depends_on:
+      - ollama
+    restart: unless-stopped
+    environment:
+      - OLLAMA_API_URL=http://ollama:11434
+
+volumes:
+  ollama_data:
