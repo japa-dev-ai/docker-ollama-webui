@@ -25,7 +25,7 @@ Este projeto configura um ambiente baseado em Docker para rodar o **Ollama AI** 
 1. **Clone o repositório:**
 
    ```sh
-   git clone https://github.com/seu-repo/ollama-docker.git
+   git clone https://github.com/japa-dev-ai/docker-ollama-webui.git
    cd ollama-docker
    ```
 
@@ -45,22 +45,54 @@ Este projeto configura um ambiente baseado em Docker para rodar o **Ollama AI** 
 ### Dockerfile do **Ollama Server** (`./ollama/Dockerfile`)
 
 ```dockerfile
-FROM ubuntu:22.04
-RUN apt update && apt install -y curl && rm -rf /var/lib/apt/lists/*
+# Usa uma imagem base com suporte a CUDA
+FROM nvidia/cuda:12.2.2-base-ubuntu22.04
+
+# Instala dependências
+RUN apt-get update && apt-get install -y \
+    wget \
+    python3 \
+    python3-pip \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instala o Ollama
 RUN curl -fsSL https://ollama.ai/install.sh | bash
-RUN ollama pull deepseek
+RUN pip install ollama
+
+# Define o diretório de trabalho
+WORKDIR /app
+
+# Baixa o modelo deepseek-r1:7b
+RUN ollama pull deepseek-r1:7b
+
+# Expõe a porta padrão do Ollama
 EXPOSE 11434
+
+# Comando para iniciar o Ollama
 CMD ["ollama", "serve"]
 ```
 
 ### Dockerfile do **WebUI** (`./webui/Dockerfile`)
 
 ```dockerfile
+# Usa uma imagem base Node.js
 FROM node:18
+
+# Define o diretório de trabalho
 WORKDIR /app
+
+# Copia os arquivos do projeto
 COPY . .
+
+# Instala as dependências
 RUN npm install
+
+# Expõe a porta padrão do OpenWebUI
 EXPOSE 3000
+
+# Comando para iniciar o OpenWebUI
 CMD ["npm", "start"]
 ```
 
@@ -71,18 +103,45 @@ version: '3.8'
 
 services:
   ollama:
-    build: ./ollama
-    ports:
-      - "11434:11434"
-    restart: always
+    build:
+      context: .
+      dockerfile: ./ollama/Dockerfile
+    container_name: ollama
+    restart: unless-stopped
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all # Habilita todas as GPUs disponíveis
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ollama_data:/app/data # Persiste os dados do Ollama
+    networks:
+      - ollama_network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu] # Reserva recursos de GPU
 
-  webui:
-    build: ./webui
+  openwebui:
+    build:
+      context: .
+      dockerfile: ./webui/Dockerfile
+    container_name: openwebui
+    restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3000:3000" # Expõe a porta do OpenWebUI
+    environment:
+      - OLLAMA_API_URL=http://ollama:11434 # Conecta ao Ollama
     depends_on:
       - ollama
-    restart: always
+    networks:
+      - ollama_network
+
+volumes:
+  ollama_data:
+
+networks:
+  ollama_network:
+    driver: bridge
 ```
 
 ## 🛠 Comandos Úteis

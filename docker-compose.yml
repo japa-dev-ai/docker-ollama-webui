@@ -2,26 +2,43 @@ version: '3.8'
 
 services:
   ollama:
-    build: ./ollama
-    container_name: ollama-server
-    ports:
-      - "11434:11434"
+    build:
+      context: .
+      dockerfile: ./ollama/Dockerfile
+    container_name: ollama
     restart: unless-stopped
-    volumes:
-      - ollama_data:/root/.ollama
     environment:
-      - OLLAMA_MODELS=/root/.ollama
+      - NVIDIA_VISIBLE_DEVICES=all # Habilita todas as GPUs disponíveis
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ollama_data:/app/data # Persiste os dados do Ollama
+    networks:
+      - ollama_network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu] # Reserva recursos de GPU
 
-  webui:
-    build: ./webui
-    container_name: ollama-webui
+  openwebui:
+    build:
+      context: .
+      dockerfile: ./webui/Dockerfile
+    container_name: openwebui
+    restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3000:3000" # Expõe a porta do OpenWebUI
+    environment:
+      - OLLAMA_API_URL=http://ollama:11434 # Conecta ao Ollama
     depends_on:
       - ollama
-    restart: unless-stopped
-    environment:
-      - OLLAMA_API_URL=http://ollama:11434
+    networks:
+      - ollama_network
 
 volumes:
   ollama_data:
+
+networks:
+  ollama_network:
+    driver: bridge
+

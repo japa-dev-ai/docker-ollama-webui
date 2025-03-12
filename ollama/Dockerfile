@@ -1,15 +1,27 @@
-FROM ubuntu:22.04
+# Usa uma imagem base com suporte a CUDA
+FROM nvidia/cuda:12.2.2-base-ubuntu22.04
 
 # Instala dependências
-RUN apt update && apt install -y curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    wget \
+    python3 \
+    python3-pip \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Baixa e instala o Ollama
+# Instala o Ollama
 RUN curl -fsSL https://ollama.ai/install.sh | bash
+RUN pip install ollama
 
-# Baixa um modelo base (ex: deepseek)
-RUN ollama pull deepseek
+# Define o diretório de trabalho
+WORKDIR /app
 
-# Exposição da API
+# Baixa o modelo deepseek-r1:7b
+RUN ollama pull deepseek-r1:7b
+
+# Expõe a porta padrão do Ollama
 EXPOSE 11434
 
+# Comando para iniciar o Ollama
 CMD ["ollama", "serve"]
