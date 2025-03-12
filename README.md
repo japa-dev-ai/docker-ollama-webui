@@ -26,7 +26,7 @@ Este projeto configura um ambiente baseado em Docker para rodar o **Ollama AI** 
 
    ```sh
    git clone https://github.com/japa-dev-ai/docker-ollama-webui.git
-   cd ollama-docker
+   cd docker-ollama-webui
    ```
 
 2. **Suba os containers:**
